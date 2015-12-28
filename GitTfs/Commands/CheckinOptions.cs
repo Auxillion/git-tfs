@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using NDesk.Options;
 using Sep.Git.Tfs.Util;
+using System;
 
 namespace Sep.Git.Tfs.Commands
 {
@@ -39,7 +40,7 @@ namespace Sep.Git.Tfs.Commands
                     { "ignore-missing-files", "When applying an edit operation, ignores items that were expected to already be in TFS but were not found. Missing files indicates bad synchronization at some point. Use this option with care.",
                         v => IgnoreMissingItems = v != null },
                     { "add-missing-files", "When applying an edit operation, add items that were expected to already be in TFS but were not found. Missing files indicates bad synchronization at some point. Use this option with care. This option is ignored if ignore-missing-files option is used.",
-                        v => AddMissingItems = v != null },
+                        v => AddMissingItems = v != null },        
                 };
             }
         }
@@ -63,6 +64,7 @@ namespace Sep.Git.Tfs.Commands
         public Regex WorkItemAssociateRegex { get; set; }
         public bool IgnoreMissingItems { get; set; }
         public bool AddMissingItems { get; set; }
+        public DateTime? CheckinDate { get; set; }
 
     }
 }

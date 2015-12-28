@@ -82,7 +82,7 @@ namespace Sep.Git.Tfs.Core
             var pendingChanges = _workspace.GetPendingChanges();
 
             if (pendingChanges.IsEmpty())
-                throw new GitTfsException("Nothing to checkin!");
+                throw new GitTfsEmptyCommitException();
 
             var workItemInfos = GetWorkItemInfos(options);
             var checkinNote = _tfsHelper.CreateCheckinNote(options.CheckinNotes);
@@ -114,7 +114,7 @@ namespace Sep.Git.Tfs.Core
             var policyOverride = GetPolicyOverrides(options, checkinProblems.Result);
             try
             {
-                var newChangeset = _workspace.Checkin(pendingChanges, options.CheckinComment, options.AuthorTfsUserId, checkinNote, workItemInfos, policyOverride, options.OverrideGatedCheckIn);
+                var newChangeset = _workspace.Checkin(pendingChanges, options.CheckinComment, options.AuthorTfsUserId, checkinNote, workItemInfos, policyOverride, options.OverrideGatedCheckIn, options.CheckinDate);
                 if (newChangeset == 0)
                 {
                     throw new GitTfsException("Checkin failed!");

@@ -37,4 +37,12 @@ namespace Sep.Git.Tfs.Core
             return this;
         }
     }
+
+    public class GitTfsEmptyCommitException : GitTfsException
+    {
+        public GitTfsEmptyCommitException() : base("Nothing to checkin!")
+        {
+        }
+    }
+
 }

@@ -21,12 +21,18 @@ namespace Sep.Git.Tfs.Util
         private readonly TextWriter writer;
         private readonly Globals globals;
         private AuthorsFile authors;
+        private bool useCheckinDate = false;
 
         public CommitSpecificCheckinOptionsFactory(TextWriter writer, Globals globals, AuthorsFile authors)
         {
             this.writer = writer;
             this.globals = globals;
             this.authors = authors;
+        }
+
+        public CommitSpecificCheckinOptionsFactory(TextWriter writer, Globals globals, AuthorsFile authors, bool useCheckinDate) : this(writer, globals, authors)
+        {
+            this.useCheckinDate = useCheckinDate;
         }
 
         public CheckinOptions BuildCommitSpecificCheckinOptions(CheckinOptions sourceCheckinOptions, string commitMessage)
@@ -44,7 +50,7 @@ namespace Sep.Git.Tfs.Util
             return customCheckinOptions;
         }
 
-        public CheckinOptions BuildCommitSpecificCheckinOptions(CheckinOptions sourceCheckinOptions, string commitMessage, GitCommit commit)
+        public CheckinOptions BuildCommitSpecificCheckinOptions(CheckinOptions sourceCheckinOptions, string commitMessage, GitCommit commit, bool useCheckinDate)
         {
             var customCheckinOptions = Clone(sourceCheckinOptions);
 
@@ -57,6 +63,8 @@ namespace Sep.Git.Tfs.Util
             ProcessForceCommand(customCheckinOptions, writer);
 
             ProcessAuthor(customCheckinOptions, writer, commit);
+
+            ProcessCheckinDate(customCheckinOptions, writer, commit, useCheckinDate);
 
             return customCheckinOptions;
         }
@@ -74,6 +82,7 @@ namespace Sep.Git.Tfs.Util
             clone.WorkItemsToAssociate.AddRange(source.WorkItemsToAssociate);
             clone.WorkItemsToResolve.AddRange(source.WorkItemsToResolve);
             clone.AuthorTfsUserId = source.AuthorTfsUserId;
+            clone.CheckinDate = source.CheckinDate;
             try
             {
                 string re = globals.Repository.GetConfig(GitTfsConstants.WorkItemAssociateRegexConfigKey);
@@ -193,6 +202,34 @@ namespace Sep.Git.Tfs.Util
 
             checkinOptions.AuthorTfsUserId = a.TfsUserId;
             writer.WriteLine("Commit was authored by git user {0} {1} ({2})", a.Name, a.Email, a.TfsUserId);
+        }
+
+
+        private void ProcessCheckinDate(CheckinOptions customCheckinOptions, TextWriter writer, GitCommit commit, bool useCheckinDate)
+        {
+            if (useCheckinDate && commit != null)
+            {
+                DateTime checkinDate = commit.When.UtcDateTime;
+               
+                // Iterate through parents that had same checkin date and increment time for each such case
+                int secondsToAdd = 0;
+                GitCommit commitPointer = commit;
+                while (commitPointer != null && commitPointer.When == checkinDate)
+                {
+                    foreach (GitCommit parent in commitPointer.Parents)
+                    {
+                        if (parent.When == checkinDate)
+                        {
+                            secondsToAdd++;
+                        }
+                        commitPointer = parent;
+                    }
+                }
+
+                customCheckinOptions.CheckinDate = checkinDate + TimeSpan.FromSeconds(secondsToAdd);
+                writer.WriteLine("Commit was authored at {0}", customCheckinOptions.CheckinDate.Value);
+
+            }
         }
 
     }

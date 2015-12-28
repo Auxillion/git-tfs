@@ -23,6 +23,7 @@ namespace Sep.Git.Tfs.Commands
 
         private bool AutoRebase { get; set; }
         private bool ForceCheckin { get; set; }
+        public bool UseCheckinDate { get; set; }
 
         public Rcheckin(TextWriter stdout, CheckinOptions checkinOptions, TfsWriter writer, Globals globals, AuthorsFile authors)
         {
@@ -42,6 +43,7 @@ namespace Sep.Git.Tfs.Commands
                     {
                         {"a|autorebase", "Continue and rebase if new TFS changesets found", v => AutoRebase = v != null},
                         {"ignore-merge", "Force check in ignoring parent tfs branches in merge commits", v => ForceCheckin = v != null},
+                        {"checkin-date", "Use Git commit checkin time. This will only work if Git changes are made after any TFS changes", v => UseCheckinDate = v != null },
                     }.Merge(_checkinOptions.OptionSet);
             }
         }
@@ -131,7 +133,7 @@ namespace Sep.Git.Tfs.Commands
                 var parents = commit.Parents.Where(c => c.Sha != currentParent).ToArray();
                 string tfsRepositoryPathOfMergedBranch = FindTfsRepositoryPathOfMergedBranch(tfsRemote, parents, target);
 
-                var commitSpecificCheckinOptions = _checkinOptionsFactory.BuildCommitSpecificCheckinOptions(_checkinOptions, message, commit);
+                var commitSpecificCheckinOptions = _checkinOptionsFactory.BuildCommitSpecificCheckinOptions(_checkinOptions, message, commit, UseCheckinDate);
 
                 _stdout.WriteLine("Starting checkin of {0} '{1}'", target.Substring(0, 8), commitSpecificCheckinOptions.CheckinComment);
                 try
@@ -149,15 +151,22 @@ namespace Sep.Git.Tfs.Commands
                     }
 
                     currentParent = target;
-                    parentChangeset = new TfsChangesetInfo {ChangesetId = newChangesetId, GitCommit = tfsRemote.MaxCommitHash, Remote = tfsRemote};
+                    var newChangeSet = tfsRemote.GetChangeset(newChangesetId);
+                    parentChangeset =  new TfsChangesetInfo {ChangesetId = newChangesetId, GitCommit = tfsRemote.MaxCommitHash, Remote = tfsRemote};
+  
                     _stdout.WriteLine("Done with {0}.", target);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     if (newChangesetId != 0)
                     {
                         var lastCommit = _globals.Repository.FindCommitHashByChangesetId(newChangesetId);
                         RebaseOnto(lastCommit, currentParent);
+                    }
+                    if (e is GitTfsEmptyCommitException)
+                    {
+                        _stdout.WriteLine("Empty commit, continue to next commit.");
+                        continue;
                     }
                     throw;
                 }
