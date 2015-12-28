@@ -152,12 +152,17 @@ namespace Sep.Git.Tfs.Commands
                     parentChangeset = new TfsChangesetInfo {ChangesetId = newChangesetId, GitCommit = tfsRemote.MaxCommitHash, Remote = tfsRemote};
                     _stdout.WriteLine("Done with {0}.", target);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     if (newChangesetId != 0)
                     {
                         var lastCommit = _globals.Repository.FindCommitHashByChangesetId(newChangesetId);
                         RebaseOnto(lastCommit, currentParent);
+                    }
+                    if (e is GitTfsEmptyCommitException)
+                    {
+                        _stdout.WriteLine("Empty commit, continue to next commit.");
+                        continue;
                     }
                     throw;
                 }
